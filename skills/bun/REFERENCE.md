@@ -25,13 +25,44 @@ const code = await proc.exited;
 const { stdout } = Bun.spawnSync(["git", "status"]); // sync variant
 ```
 
+Pseudo-terminal (instead of `node-pty`):
+
+```ts
+const proc = Bun.spawn(["bash"], {
+  terminal: { cols: 80, rows: 24, data(term, data) { process.stdout.write(data); } },
+});
+proc.terminal.write("echo hello\n");
+proc.terminal.resize(120, 40);
+await proc.exited;
+proc.terminal.close();
+```
+
 ## Files — `/docs/runtime/file-io`
 
 ```ts
 const pkg = await Bun.file("package.json").json(); // also .text() .bytes() .stream() .exists()
 await Bun.write("package.json", JSON.stringify(pkg, null, 2) + "\n");
 await Bun.write("copy.png", Bun.file("logo.png"));
+await Bun.write("big.tar.gz", await fetch(url)); // streams the download to disk; also takes a ReadableStream
 import { mkdir, readdir, rm } from "node:fs/promises"; // directories: node:fs is Bun's recommendation
+```
+
+## Archives — `/docs/runtime/archive`
+
+```ts
+const archive = new Bun.Archive({ "README.md": "# hi", "src/index.ts": code }, { compress: "gzip" });
+await Bun.write("out.tar.gz", archive);
+const extracted = new Bun.Archive(await Bun.file("pkg.tar.gz").bytes());
+await extracted.extract("./output"); // entry count
+for (const [path, file] of await extracted.files()) console.log(path, await file.text());
+```
+
+## Compression — `/docs/runtime/utils`
+
+```ts
+const gz = Bun.gzipSync(data); // Uint8Array; Bun.gunzipSync(gz) to reverse
+const body = Bun.file("log.txt").stream().pipeThrough(new CompressionStream("gzip")); // also "brotli", "zstd", "deflate"
+await Bun.write("log.txt.gz", new Response(body));
 ```
 
 ## Glob — `/docs/runtime/glob`
@@ -56,7 +87,7 @@ const rows = db.query("SELECT * FROM todos WHERE done = ?").all(0); // .get() fo
 
 ```ts
 import { sql, SQL } from "bun"; // `sql` reads DATABASE_URL
-const users = await sql`SELECT * FROM users WHERE id = ${id}`; // parameterized
+const users = await sql<User[]>`SELECT * FROM users WHERE id = ${id}`; // parameterized; <T> types the rows
 const [user] = await sql`INSERT INTO users ${sql({ name, email })} RETURNING *`; // object or array of objects
 await sql.begin(async (tx) => { await tx`UPDATE users SET name = ${name} WHERE id = ${id}`; });
 const mysql = new SQL("mysql://user:pass@localhost:3306/db");
@@ -98,6 +129,7 @@ const server = Bun.serve({
     },
     "/todos/:id": (req) => Response.json(todos[Number(req.params.id)]),
   },
+  "/static/*": { dir: "./public" }, // static folder: Content-Type, ETag, Range, index.html handled
   fetch: () => new Response("Not Found", { status: 404 }), // fallback
 });
 server.stop();
@@ -134,6 +166,26 @@ Bun.serve({
 const jar = new Bun.CookieMap("a=1; b=2"); // outside Bun.serve
 ```
 
+## URL matching — standard `URLPattern`
+
+```ts
+const route = new URLPattern({ pathname: "/users/:id" });
+route.test(url); // boolean
+route.exec(url)?.pathname.groups.id; // "42"
+```
+
+## HTTP client sessions — `/docs/runtime/networking/fetch`
+
+```ts
+await fetch(url, { proxy: "http://proxy:8080", tls: { rejectUnauthorized: false } }); // per request
+using session = new Bun.FetchSession({ // own TLS, proxy and keep-alive pool
+  tls: { ca: await Bun.file("corp-ca.pem").text() },
+  proxy: { url: "http://proxy.internal:8080" },
+  keepAlive: { idleTimeout: 30, maxIdleSockets: 8 },
+});
+const res = await session.fetch("https://api.example.com"); // session.fetch is bound: new Client({ fetch: session.fetch })
+```
+
 ## Hashing — `/docs/runtime/hashing`
 
 ```ts
@@ -150,12 +202,14 @@ new Bun.CryptoHasher("sha256").update("data").digest("hex");
 const apiKey = Bun.env.API_KEY; // same object as process.env
 ```
 
-## YAML / TOML / JSON5 — `/docs/runtime/yaml`
+## YAML / TOML / JSON5 / JSONC / JSONL — `/docs/runtime/yaml`, `/docs/runtime/jsonl`
 
 ```ts
 const config = Bun.YAML.parse(await Bun.file("config.yaml").text());
 import config2 from "./config.yaml"; // or import the file directly (also .toml, .json5)
 Bun.TOML.parse(text);
+Bun.JSONC.parse(text); // comments and trailing commas, like tsconfig.json
+Bun.JSONL.parse(ndjson); // array of records; Bun.JSONL.parseChunk for streams
 ```
 
 ## Semver — `/docs/runtime/semver`
@@ -190,8 +244,18 @@ Bun.deepEquals(a, b);
 Bun.stripANSI("\x1b[31mred\x1b[0m"); // "red"
 Bun.stringWidth("日本"); // 4 — display columns, ANSI and emoji aware
 Bun.wrapAnsi(text, 80);
+Bun.sliceAnsi(text, 0, 20); // column-aware slice that keeps colors (truncate with it)
 Bun.randomUUIDv7(); // time-ordered, good for DB keys; crypto.randomUUID() for v4
 Bun.which("git"); // absolute path or null
+```
+
+## Dates and times — standard `Temporal`
+
+```ts
+const today = Temporal.Now.plainDateISO();
+today.add({ days: 7 }).toString(); // "2026-11-26"
+Temporal.Instant.from("2026-01-01T00:00:00Z").toZonedDateTimeISO("America/Sao_Paulo");
+Temporal.Duration.from({ hours: 2 }).total("minutes"); // 120
 ```
 
 ## Cron — `/docs/runtime/cron`
@@ -208,7 +272,8 @@ await Bun.cron("./worker.ts", "30 2 * * MON", "weekly-report"); // OS-level job,
 
 ```ts
 await Bun.file("photo.jpg").image().resize(400, 400, { fit: "inside" }).webp({ quality: 80 }).write("thumb.webp");
-// fit: "fill" (default, stretch to exact size) or "inside" (keep aspect ratio, fit within the box) — the full set
+// fit: "fill" (default, stretch to exact size) or "inside" (keep aspect ratio, fit within the box) — the full set.
+// Bun.Image has no crop/cover step: for a square thumbnail use resize(200, 200) (stretch) or { fit: "inside" } (letterbox-free, may be smaller on one side).
 img.resize(800); // width only, keeps aspect ratio
 img.rotate(90).flip(); // also .flop(), .modulate({ brightness })
 const { width, height, format } = await new Bun.Image("photo.jpg").metadata();
@@ -252,6 +317,8 @@ test("sum", () => expect(sum([1, 2])).toBe(3));
 const fn = mock((x: number) => x * 2); // fn.mock.calls, .mockReturnValue(), .mockResolvedValue()
 const spy = spyOn(api, "fetchUser"); // tracks calls, keeps the original
 mock.module("./db", () => ({ query: mock(() => []) })); // replaces a module for importers
+jest.useFakeTimers(); jest.advanceTimersByTime(1000); jest.useRealTimers(); // `jest` from "bun:test"
+setSystemTime(new Date("2026-01-01")); // freeze Date.now()
 ```
 
 Run with `bun test` (finds `*.test.ts`, `*.spec.ts`), `bun test --watch`, `bun test -t name`. Mocks: `/docs/test/mocks`.
@@ -286,8 +353,11 @@ await Bun.build({ entrypoints: ["src/index.ts"], outdir: "dist", target: "browse
 | Job | Command |
 | --- | --- |
 | Run TS, restart on change | `bun --watch src/index.ts` (`--hot` reloads in place) |
+| Run scripts together | `bun run --parallel dev:api dev:web`, `bun run --parallel "build:*"`, `--sequential`, `--filter '*'`, `--no-exit-on-error` |
+| Profile | `bun --cpu-prof-md app.ts`, `bun --heap-prof-md app.ts` — Markdown reports to read; `/docs/project/benchmarking` |
 | Install / add / run a binary | `bun install`, `bun add zod`, `bun add -d @types/bun`, `bunx <pkg>` |
 | Package metadata (`npm view`) | `bun info zod`, `bun info zod version` |
+| Version bump, licenses, audit | `bun pm version patch`, `bun pm licenses`, `bun audit fix` |
 | Format | `bun fmt`, `bun fmt --check` — `/docs/format` |
 | Lint | `bun lint`, `bun lint --fix` — `/docs/lint` |
 | Type check | `bun check`, `bun check src/index.ts` — `/docs/runtime/check` |
