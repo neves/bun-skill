@@ -187,22 +187,94 @@ if (import.meta.main) { /* run only when executed directly */ }
 ```ts
 await Bun.sleep(1000);
 Bun.deepEquals(a, b);
+Bun.stripANSI("\x1b[31mred\x1b[0m"); // "red"
+Bun.stringWidth("日本"); // 4 — display columns, ANSI and emoji aware
+Bun.wrapAnsi(text, 80);
+Bun.randomUUIDv7(); // time-ordered, good for DB keys; crypto.randomUUID() for v4
+Bun.which("git"); // absolute path or null
 ```
 
-## Tests — `/docs/test/index`
+## Cron — `/docs/runtime/cron`
+
+```ts
+const job = Bun.cron("*/5 * * * *", async () => { await sync(); }); // in-process
+job.stop();
+Bun.cron("0 9 * * *", report, { tz: "America/New_York" });
+const next = Bun.cron.parse("30 9 * * MON-FRI"); // next matching Date
+await Bun.cron("./worker.ts", "30 2 * * MON", "weekly-report"); // OS-level job, survives reboot
+```
+
+## Images — `/docs/runtime/image`
+
+```ts
+await Bun.file("photo.jpg").image().resize(400, 400, { fit: "inside" }).webp({ quality: 80 }).write("thumb.webp");
+// fit: "fill" (default, stretch to exact size) or "inside" (keep aspect ratio, fit within the box) — the full set
+img.resize(800); // width only, keeps aspect ratio
+img.rotate(90).flip(); // also .flop(), .modulate({ brightness })
+const { width, height, format } = await new Bun.Image("photo.jpg").metadata();
+const png = await new Bun.Image(bytes, { maxPixels: 4096 * 4096 }).png().bytes(); // untrusted input: pass bytes, cap pixels
+```
+
+## Browser automation — `/docs/runtime/webview`
+
+```ts
+await using view = new Bun.WebView({ width: 1280, height: 720 }); // closes automatically
+await view.navigate("https://example.com");
+await view.click("a[href]"); // waits until clickable
+const title = await view.evaluate("document.title");
+await Bun.write("page.png", await view.screenshot());
+```
+
+## Markdown — `/docs/runtime/markdown`
+
+```ts
+const html = Bun.markdown.html("# Hello **world**"); // GFM tables, strikethrough, task lists on by default
+Bun.markdown.html(md, { autolinks: true, headings: true });
+```
+
+## XML — `/docs/runtime/xml`
+
+```ts
+import { XML } from "bun";
+const data = XML.parse(`<order id="A1"><item sku="tea">Tea</item></order>`);
+// { order: { "@id": "A1", item: { "@sku": "tea", "#text": "Tea" } } } — all values are strings
+const xml = XML.stringify(data, null, 2);
+```
+
+## Tests — `/docs/test`
 
 ```ts
 import { test, expect, describe, mock, beforeEach } from "bun:test";
 test("sum", () => expect(sum([1, 2])).toBe(3));
 ```
 
-Run with `bun test` (finds `*.test.ts`, `*.spec.ts`), `bun test --watch`, `bun test -t name`.
+```ts
+const fn = mock((x: number) => x * 2); // fn.mock.calls, .mockReturnValue(), .mockResolvedValue()
+const spy = spyOn(api, "fetchUser"); // tracks calls, keeps the original
+mock.module("./db", () => ({ query: mock(() => []) })); // replaces a module for importers
+```
 
-## Bundling — `/docs/bundler/index`
+Run with `bun test` (finds `*.test.ts`, `*.spec.ts`), `bun test --watch`, `bun test -t name`. Mocks: `/docs/test/mocks`.
+
+## Frontend / full-stack — `/docs/bundler/fullstack`
+
+```sh
+bun ./index.html # dev server: bundles <script>/<link> tags, TS/JSX/CSS, hot reload
+```
+
+```ts
+import homepage from "./index.html";
+Bun.serve({
+  routes: { "/": homepage, "/api/todos": { GET: () => Response.json(todos) } },
+  development: true, // detailed errors + hot reload
+});
+```
+
+## Bundling — `/docs/bundler`
 
 ```sh
 bun build src/index.ts --outdir dist --target browser --minify
-bun build src/cli.ts --compile --outfile app # single-file executable
+bun build src/cli.ts --compile --outfile app # single-file executable — `/docs/compiler/executables`
 ```
 
 ```ts

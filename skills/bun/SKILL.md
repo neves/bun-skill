@@ -39,11 +39,19 @@ Baseline: Bun **1.4.5**. The table below is a cache of the live docs; the docs w
 | Semver (`semver`) | `Bun.semver` | `/docs/runtime/semver` |
 | OS keychain (`keytar`) | `Bun.secrets` | `/docs/runtime/secrets` |
 | `__dirname`, `require.main === module` | `import.meta.dir`, `import.meta.main` | `/docs/runtime/module-resolution` |
-| Sleep (`setTimeout` promise) | `await Bun.sleep(ms)` | `/docs/runtime/utils` |
-| Run TS (`ts-node`, `tsx`, `nodemon`) | `bun file.ts`, `bun --watch`, `bun --hot` | `/docs/runtime/index` |
+| Sleep, deep-equal, terminal text, ids (`strip-ansi`, `string-width`, `wrap-ansi`, `uuid`, `which`) | `Bun.sleep`, `Bun.deepEquals`, `Bun.stripANSI`, `Bun.stringWidth`, `Bun.wrapAnsi`, `Bun.randomUUIDv7`, `Bun.which` | `/docs/runtime/utils` |
+| Cron jobs (`node-cron`, `cron`) | `Bun.cron(schedule, fn)` | `/docs/runtime/cron` |
+| Images (`sharp`, `jimp`) | `Bun.file(p).image()`, `Bun.Image` | `/docs/runtime/image` |
+| Browser automation, scraping (`puppeteer`, `playwright`) | `Bun.WebView` | `/docs/runtime/webview` |
+| Markdown → HTML (`marked`, `markdown-it`) | `Bun.markdown.html` | `/docs/runtime/markdown` |
+| XML (`fast-xml-parser`, `xml2js`) | `Bun.XML.parse` / `.stringify` | `/docs/runtime/xml` |
+| Run TS (`ts-node`, `tsx`, `nodemon`) | `bun file.ts`, `bun --watch`, `bun --hot` | `/docs/runtime` |
 | Packages (`npm`, `npx`, `npm view`) | `bun install`, `bun add`, `bunx`, `bun info` | `/docs/pm/cli/install` |
-| Tests (`jest`, `vitest`) | `bun test` + `import { test, expect, mock } from "bun:test"` | `/docs/test/index` |
-| Bundling (`esbuild`, `webpack`, `tsup`) | `bun build` / `Bun.build` | `/docs/bundler/index` |
+| Tests (`jest`, `vitest`) | `bun test` + `import { test, expect, mock } from "bun:test"` | `/docs/test` |
+| Test mocks (`jest.mock`, `sinon`) | `mock`, `spyOn`, `mock.module` from `bun:test` | `/docs/test/mocks` |
+| Frontend dev server, full-stack app (`vite`, `webpack-dev-server`) | `bun ./index.html`, or `import page from "./index.html"` as a `Bun.serve` route | `/docs/bundler/fullstack` |
+| Bundling (`esbuild`, `webpack`, `tsup`) | `bun build` / `Bun.build` | `/docs/bundler` |
+| Single-file executable (`pkg`, `nexe`) | `bun build --compile` | `/docs/compiler/executables` |
 | Formatting (`prettier`) | `bun fmt` | `/docs/format` |
 | Linting (`eslint`, `oxlint`) | `bun lint` | `/docs/lint` |
 | Type checking (`tsc --noEmit`) | `bun check` | `/docs/runtime/check` |
