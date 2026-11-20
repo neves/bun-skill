@@ -21,3 +21,16 @@ A cada release do Bun (https://bun.com/blog):
 1. Leia as release notes (`https://bun.com/blog/bun-v<versão>`).
 2. Se surgiu API nativa que substitui algo do Node ou um pacote npm, adicione uma linha na tabela de `skills/bun/SKILL.md`.
 3. Atualize o baseline na skill e aqui.
+
+## Evals
+
+Teste agêntico: cada caso abre uma sessão headless do Claude Code (Haiku 5.5) num projeto Bun temporário, com só esta skill instalada, e pede uma tarefa que um agente faria "do jeito Node" (formatar, testar, SQLite, servidor HTTP, shell…). O teste confere os comandos rodados e o código gerado, e falha se o agente buscou algo na web.
+
+```sh
+bun run eval                       # todos os casos (skill forçada com /bun)
+bun test evals -t sqlite           # um caso
+EVAL_TRIGGER=auto bun run eval     # sem /bun: mede se a description dispara sozinha
+EVAL_MODEL=claude-sonnet-5-5 bun run eval
+```
+
+Os casos ficam em `evals/cases.ts`, e os transcripts em `evals/.runs/`. O caso `lint` é pulado quando o Bun instalado não tem `bun lint`.
