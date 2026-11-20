@@ -70,8 +70,8 @@ async function runAgent(dir: string, prompt: string, id: string) {
 async function changedCode(dir: string, before: Record<string, string>) {
   const glob = new Bun.Glob("**/*.{ts,tsx,js,mjs,cjs,json,toml,yaml,yml}");
   let text = "";
-  for await (const path of glob.scan({ cwd: dir, dot: false })) {
-    if (path.startsWith("node_modules/") || path.startsWith("dist/") || path === "bun.lock") continue;
+  for await (const path of glob.scan({ cwd: dir, dot: true })) {
+    if (/^(node_modules|dist|\.git|\.claude)\//.test(path) || path === "bun.lock") continue;
     const content = await Bun.file(join(dir, path)).text();
     if (before[path] !== content) text += `\n// ---- ${path}\n${content}`;
   }

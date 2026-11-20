@@ -23,9 +23,11 @@ Baseline: Bun **1.4.5**. The table below is a cache of the live docs; the docs w
 | Shell scripting (`child_process.exec`, `execa`, `zx`) | ``Bun.$`cmd` `` — escapes interpolations, cross-platform | `/docs/runtime/shell` |
 | Child processes (`spawn`, `fork`, IPC) | `Bun.spawn` / `Bun.spawnSync` | `/docs/runtime/child-process` |
 | Pseudo-terminal (`node-pty`) | `Bun.spawn(cmd, { terminal })` | `/docs/runtime/child-process` |
+| Read stdin, ask the user (`readline`, `get-stdin`, `process.stdin.on`, `prompts`) | `await Bun.stdin.text()`, `for await (const line of console)`, `prompt()` | `/docs/runtime/console` |
+| TCP sockets (`node:net`) | `Bun.listen` / `Bun.connect` | `/docs/runtime/networking/tcp` |
 | Read/write files, downloads (`fs.readFile`, `fs.writeFile`, `stream.pipeline`) | `Bun.file(p).text()/.json()/.bytes()/.stream()`, `Bun.write(path, data \| await fetch(url))` | `/docs/runtime/file-io` |
 | tar archives (`tar`, `archiver`) | `Bun.Archive` | `/docs/runtime/archive` |
-| Compression (`pako`, `node:zlib`) | `Bun.gzipSync` / `Bun.gunzipSync`, `CompressionStream` (gzip, brotli, zstd) | `/docs/runtime/utils` |
+| Compression (`pako`, `node:zlib`) | `Bun.gzipSync` / `Bun.gunzipSync`, `Bun.zstdCompressSync`, `Bun.deflateSync`, `CompressionStream` (gzip, brotli, zstd) | `/docs/runtime/utils` |
 | Directories (`mkdir`, `readdir`, `rm`) | _keep_ `node:fs/promises` — Bun's docs recommend it | `/docs/runtime/file-io` |
 | Globbing (`glob`, `fast-glob`) | `new Bun.Glob(pattern).scan()` | `/docs/runtime/glob` |
 | SQLite (`better-sqlite3`, `sqlite3`) | `import { Database } from "bun:sqlite"` | `/docs/runtime/sqlite` |
@@ -36,17 +38,19 @@ Baseline: Bun **1.4.5**. The table below is a cache of the live docs; the docs w
 | Serve a static folder (`express.static`, `serve-static`, `sirv`, hand-rolled `Bun.file` handlers) | route `"/assets/*": { dir: "./public" }` — Content-Type, ETag, Range, index.html and path traversal handled | `/docs/runtime/http/routing` |
 | WebSockets (`ws`, `socket.io`) | `Bun.serve({ websocket })` | `/docs/runtime/http/websockets` |
 | Cookies (`cookie`, `cookie-parser`) | `req.cookies`, `Bun.CookieMap` | `/docs/runtime/http/cookies` |
+| CSRF tokens (`csurf`, `csrf-csrf`) | `Bun.CSRF.generate` / `.verify` | `/docs/runtime/csrf` |
 | URL matching (`path-to-regexp`) | `URLPattern` (standard) | MDN `URLPattern` |
 | HTTP client with its own TLS/proxy/pool (undici `Agent`, `https-proxy-agent`, `axios.create`) | `Bun.FetchSession`, `fetch(url, { proxy, tls })` | `/docs/runtime/networking/fetch` |
 | Password hashing (`bcrypt`, `argon2`) | `Bun.password.hash` / `.verify` | `/docs/runtime/hashing` |
 | Fast hashing (`xxhash`, `crypto.createHash`) | `Bun.hash`, `Bun.CryptoHasher` | `/docs/runtime/hashing` |
-| Env vars (`dotenv`) | `.env` loads automatically; `Bun.env` | `/docs/runtime/environment-variables` |
+| Env vars (`dotenv`, `dotenv-cli`, `env-cmd`) | `.env` loads automatically; `Bun.env`; `bun --env-file=.env.prod`, `--no-env-file` | `/docs/runtime/environment-variables` |
 | YAML / TOML / JSON5 / JSONC / JSONL (`js-yaml`, `jsonc-parser`, `strip-json-comments`, `ndjson`) | `Bun.YAML`, `Bun.TOML`, `Bun.JSON5`, `Bun.JSONC`, `Bun.JSONL`, or `import` the file | `/docs/runtime/yaml`, `/docs/runtime/toml`, `/docs/runtime/json5` |
 | Semver (`semver`) | `Bun.semver` | `/docs/runtime/semver` |
 | OS keychain (`keytar`) | `Bun.secrets` | `/docs/runtime/secrets` |
 | `__dirname`, `require.main === module` | `import.meta.dir`, `import.meta.main` | `/docs/runtime/module-resolution` |
-| Sleep, deep-equal, terminal text, ids (`strip-ansi`, `string-width`, `wrap-ansi`, `slice-ansi`, `cli-truncate`, `uuid`, `which`) | `Bun.sleep`, `Bun.deepEquals`, `Bun.stripANSI`, `Bun.stringWidth`, `Bun.wrapAnsi`, `Bun.sliceAnsi`, `Bun.randomUUIDv7`, `Bun.which` | `/docs/runtime/utils` |
+| Sleep, deep-equal, terminal text, ids (`escape-html`, `he`, `chalk` hex colors, `tinycolor2`, `strip-ansi`, `string-width`, `wrap-ansi`, `slice-ansi`, `cli-truncate`, `uuid`, `which`) | `Bun.sleep`, `Bun.deepEquals`, `Bun.escapeHTML`, `Bun.color`, `Bun.stripANSI`, `Bun.stringWidth`, `Bun.wrapAnsi`, `Bun.sliceAnsi`, `Bun.randomUUIDv7`, `Bun.which` | `/docs/runtime/utils` |
 | Dates and times (`moment`, `dayjs`, `date-fns`, `luxon`) | `Temporal` (standard, global) | MDN `Temporal` |
+| Cleanup (`try/finally` + `close()`) | `using` / `await using` (standard) — Bun.spawn, WebView, FetchSession, mock and spyOn dispose themselves | MDN `using` |
 | Cron jobs (`node-cron`, `cron`) | `Bun.cron(schedule, fn)` | `/docs/runtime/cron` |
 | Images (`sharp`, `jimp`) | `Bun.file(p).image()`, `Bun.Image` | `/docs/runtime/image` |
 | Browser automation, scraping (`puppeteer`, `playwright`) | `Bun.WebView` | `/docs/runtime/webview` |
@@ -55,11 +59,16 @@ Baseline: Bun **1.4.5**. The table below is a cache of the live docs; the docs w
 | Run TS (`ts-node`, `tsx`, `nodemon`) | `bun file.ts`, `bun --watch`, `bun --hot` | `/docs/runtime` |
 | Run scripts together (`concurrently`, `npm-run-all`) | `bun run --parallel a b`, `--sequential`, `"build:*"`, `--filter` | `/docs/runtime` |
 | Profiling (`0x`, `clinic`) | `bun --cpu-prof-md`, `bun --heap-prof-md` (Markdown reports to read) | `/docs/project/benchmarking` |
-| Packages (`npm`, `npx`, `npm view`, `npm version`, `license-checker`) | `bun install`, `bun add`, `bunx`, `bun info`, `bun pm version`, `bun pm licenses`, `bun audit fix` | `/docs/pm/cli/install` |
+| Packages (`npm`, `npx`, `npm ci`, `npm view`, `npm version`, `npm publish`, `npm-check-updates`, `license-checker`) | `bun install`, `bun install --frozen-lockfile`, `bun add`, `bunx`, `bun info`, `bun pm version`, `bun publish`, `bun update -i`, `bun pm licenses`, `bun audit fix` |
+| Patch a dependency (`patch-package`) | `bun patch <pkg>`, edit, `bun patch --commit <pkg>` | `/docs/pm/cli/patch` |
+| New project (`npm create vite`, `create-react-app`, `npm init`) | `bun init`, `bun init --react` (`=tailwind`, `=shadcn`), `bun create <template>` | `/docs/runtime/templating/init` | `/docs/pm/cli/install` |
 | Tests (`jest`, `vitest`) | `bun test` + `import { test, expect, mock } from "bun:test"` | `/docs/test` |
+| Coverage, CI sharding, retries (`c8`, `nyc`, `jest --shard`, `jest --changedSince`) | `bun test --coverage`, `--shard=1/3`, `--changed`, `--parallel`, `--retry=2` | `/docs/test/code-coverage` |
 | Test mocks, fake timers (`jest.mock`, `sinon`, `vi.useFakeTimers`) | `mock`, `spyOn`, `mock.module`, `jest.useFakeTimers`, `setSystemTime` from `bun:test` | `/docs/test/mocks` |
 | Frontend dev server, full-stack app (`vite`, `webpack-dev-server`) | `bun ./index.html`, or `import page from "./index.html"` as a `Bun.serve` route | `/docs/bundler/fullstack` |
 | Bundling (`esbuild`, `webpack`, `tsup`) | `bun build` / `Bun.build` | `/docs/bundler` |
+| Bundle analysis (`webpack-bundle-analyzer`, `source-map-explorer`) | `bun build --metafile-md=meta.md` (Markdown report to read) | `/docs/bundler` |
+| Transpile TS/JSX in code (`@babel/core`, `typescript.transpileModule`, `esbuild.transform`) | `new Bun.Transpiler({ loader: "tsx" }).transformSync(code)` | `/docs/runtime/transpiler` |
 | Single-file executable (`pkg`, `nexe`) | `bun build --compile` | `/docs/compiler/executables` |
 | Formatting (`prettier`) | `bun fmt` | `/docs/format` |
 | Linting (`eslint`, `oxlint`) | `bun lint` | `/docs/lint` |

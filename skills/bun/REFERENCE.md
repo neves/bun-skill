@@ -37,6 +37,27 @@ await proc.exited;
 proc.terminal.close();
 ```
 
+## Stdin and prompts — `/docs/runtime/console`
+
+```ts
+const input = await Bun.stdin.text(); // whole stdin; also .json(), .stream()
+for await (const line of console) { /* one line of stdin at a time */ }
+const name = prompt("Name?"); // synchronous, string | null
+```
+
+## TCP — `/docs/runtime/networking/tcp`
+
+```ts
+const server = Bun.listen({
+  hostname: "127.0.0.1", port: 9000,
+  socket: { data(socket, data) { socket.write(data); }, open(socket) {}, close(socket) {} },
+});
+await Bun.connect({
+  hostname: "127.0.0.1", port: 9000,
+  socket: { open(socket) { socket.write("ping"); }, data(socket, data) { console.log(data.toString()); socket.end(); } },
+});
+```
+
 ## Files — `/docs/runtime/file-io`
 
 ```ts
@@ -61,6 +82,7 @@ for (const [path, file] of await extracted.files()) console.log(path, await file
 
 ```ts
 const gz = Bun.gzipSync(data); // Uint8Array; Bun.gunzipSync(gz) to reverse
+Bun.zstdCompressSync(data); Bun.zstdDecompressSync(z); Bun.deflateSync(data); // also async zstdCompress
 const body = Bun.file("log.txt").stream().pipeThrough(new CompressionStream("gzip")); // also "brotli", "zstd", "deflate"
 await Bun.write("log.txt.gz", new Response(body));
 ```
@@ -166,6 +188,24 @@ Bun.serve({
 const jar = new Bun.CookieMap("a=1; b=2"); // outside Bun.serve
 ```
 
+## CSRF — `/docs/runtime/csrf`
+
+```ts
+const secret = Bun.env.CSRF_SECRET; // omit both secrets to use a per-process random one
+const token = Bun.CSRF.generate(secret, { sessionId, expiresIn: 60 * 60 * 1000 }); // string; default 24h
+const ok = Bun.CSRF.verify(token, { secret, sessionId }); // boolean; sessionId must match generate()
+
+Bun.serve({
+  routes: {
+    "/form": () => new Response(`<form method="post" action="/submit"><input type="hidden" name="csrf" value="${Bun.CSRF.generate(secret)}"><button>Send</button></form>`, { headers: { "Content-Type": "text/html" } }),
+    "/submit": { POST: async (req) => {
+      const token = String((await req.formData()).get("csrf") ?? req.headers.get("x-csrf-token") ?? "");
+      return Bun.CSRF.verify(token, { secret }) ? new Response("ok") : new Response("Forbidden", { status: 403 });
+    } },
+  },
+});
+```
+
 ## URL matching — standard `URLPattern`
 
 ```ts
@@ -200,6 +240,10 @@ new Bun.CryptoHasher("sha256").update("data").digest("hex");
 ```ts
 // .env, .env.local, .env.<NODE_ENV> load automatically
 const apiKey = Bun.env.API_KEY; // same object as process.env
+```
+
+```sh
+bun --env-file=.env.prod server.ts # load specific files (repeatable); --no-env-file skips .env
 ```
 
 ## YAML / TOML / JSON5 / JSONC / JSONL — `/docs/runtime/yaml`, `/docs/runtime/jsonl`
@@ -247,6 +291,9 @@ Bun.wrapAnsi(text, 80);
 Bun.sliceAnsi(text, 0, 20); // column-aware slice that keeps colors (truncate with it)
 Bun.randomUUIDv7(); // time-ordered, good for DB keys; crypto.randomUUID() for v4
 Bun.which("git"); // absolute path or null
+Bun.escapeHTML(`<a href="x">`); // &lt;a href=&quot;x&quot;&gt;
+Bun.color("#ff8800", "ansi-16m"); // "\x1b[38;2;255;136;0m" — "ansi" auto-detects and returns "" when piped
+Bun.color("red", "hex"); // "#ff0000"; also "css", "rgb", "number", "ansi-256", "ansi-16"
 ```
 
 ## Dates and times — standard `Temporal`
@@ -256,6 +303,14 @@ const today = Temporal.Now.plainDateISO();
 today.add({ days: 7 }).toString(); // "2026-11-26"
 Temporal.Instant.from("2026-01-01T00:00:00Z").toZonedDateTimeISO("America/Sao_Paulo");
 Temporal.Duration.from({ hours: 2 }).total("minutes"); // 120
+```
+
+## Cleanup — standard `using`
+
+```ts
+await using proc = Bun.spawn(["bun", "server.ts"]); // killed and awaited at scope exit
+using spy = spyOn(api, "fetchUser"); // restored at scope exit
+await using view = new Bun.WebView(); // also Bun.FetchSession
 ```
 
 ## Cron — `/docs/runtime/cron`
@@ -323,6 +378,12 @@ setSystemTime(new Date("2026-01-01")); // freeze Date.now()
 
 Run with `bun test` (finds `*.test.ts`, `*.spec.ts`), `bun test --watch`, `bun test -t name`. Mocks: `/docs/test/mocks`.
 
+```sh
+bun test --coverage                       # text table; --coverage-reporter=lcov writes coverage/lcov.info
+bun test --shard=1/3 --parallel           # CI: split across jobs, run files in worker processes
+bun test --changed=main --retry=2         # only files affected by changes vs main; retry flaky tests
+```
+
 ## Frontend / full-stack — `/docs/bundler/fullstack`
 
 ```sh
@@ -342,10 +403,12 @@ Bun.serve({
 ```sh
 bun build src/index.ts --outdir dist --target browser --minify
 bun build src/cli.ts --compile --outfile app # single-file executable — `/docs/compiler/executables`
+bun build src/index.ts --outdir dist --metafile-md=meta.md # Markdown module-graph report to read
 ```
 
 ```ts
 await Bun.build({ entrypoints: ["src/index.ts"], outdir: "dist", target: "browser", minify: true });
+const js = new Bun.Transpiler({ loader: "tsx" }).transformSync(code); // TS/JSX → JS string, no bundling
 ```
 
 ## Dev tools
@@ -358,6 +421,9 @@ await Bun.build({ entrypoints: ["src/index.ts"], outdir: "dist", target: "browse
 | Install / add / run a binary | `bun install`, `bun add zod`, `bun add -d @types/bun`, `bunx <pkg>` |
 | Package metadata (`npm view`) | `bun info zod`, `bun info zod version` |
 | Version bump, licenses, audit | `bun pm version patch`, `bun pm licenses`, `bun audit fix` |
+| CI install, updates, publish | `bun install --frozen-lockfile`, `bun update -i` (`--latest`), `bun publish` |
+| Patch a dependency | `bun patch zod` → edit `node_modules/zod` → `bun patch --commit zod` (writes `patches/`) |
+| New project | `bun init -y`, `bun init --react` (`=tailwind`, `=shadcn`), `bun create <template>` |
 | Format | `bun fmt`, `bun fmt --check` — `/docs/format` |
 | Lint | `bun lint`, `bun lint --fix` — `/docs/lint` |
 | Type check | `bun check`, `bun check src/index.ts` — `/docs/runtime/check` |
