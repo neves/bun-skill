@@ -45,6 +45,24 @@ for await (const line of console) { /* one line of stdin at a time */ }
 const name = prompt("Name?"); // synchronous, string | null
 ```
 
+## CLI args — `/docs/guides/process/argv`
+
+Use `parseArgs` from `"util"`, never a CLI-parsing package or hand-rolled `argv` loops.
+
+```ts
+import { parseArgs } from "util";
+const { values, positionals } = parseArgs({
+  args: Bun.argv.slice(2), // drop `bun` and the script path
+  options: {
+    out: { type: "string", short: "o", default: "dist" },
+    verbose: { type: "boolean", short: "v" },
+    tag: { type: "string", multiple: true }, // --tag a --tag b → ["a", "b"]
+  },
+  strict: true, // unknown flags throw
+  allowPositionals: true,
+});
+```
+
 ## TCP — `/docs/runtime/networking/tcp`
 
 ```ts

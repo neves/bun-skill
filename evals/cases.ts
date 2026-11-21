@@ -313,6 +313,12 @@ export const cases: Case[] = [
     forbid: { code: [/readline|process\.stdin|get-stdin/] },
   },
   {
+    id: "argv",
+    prompt: "Write scripts/resize.ts: a CLI that takes input files as positional args plus --width/-w (number, default 800), --out/-o (directory) and --verbose flags, and prints the parsed options.",
+    expect: { code: [/import\s*\{[^}]*\bparseArgs\b[^}]*\}\s*from\s*["'](node:)?util["']/] },
+    forbid: { code: [/from\s*["'](yargs|commander|minimist|meow|arg|cac)["']/] },
+  },
+  {
     id: "tcp",
     prompt: "Write tcp-echo.ts: a TCP echo server on port 9000.",
     expect: { code: [/\bBun\.listen\b|\blisten\(\s*\{/] },

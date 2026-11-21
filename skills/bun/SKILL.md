@@ -24,6 +24,7 @@ Baseline: Bun **1.4.5**. The table below is a cache of the live docs; the docs w
 | Child processes (`spawn`, `fork`, IPC) | `Bun.spawn` / `Bun.spawnSync` | `/docs/runtime/child-process` |
 | Pseudo-terminal (`node-pty`) | `Bun.spawn(cmd, { terminal })` | `/docs/runtime/child-process` |
 | Read stdin, ask the user (`readline`, `get-stdin`, `process.stdin.on`, `prompts`) | `await Bun.stdin.text()`, `for await (const line of console)`, `prompt()` | `/docs/runtime/console` |
+| CLI args (`yargs`, `commander`, `minimist`, `meow`, hand-parsing `process.argv`) | `import { parseArgs } from "util"` over `Bun.argv.slice(2)` | `/docs/guides/process/argv` |
 | TCP sockets (`node:net`) | `Bun.listen` / `Bun.connect` | `/docs/runtime/networking/tcp` |
 | Read/write files, downloads (`fs.readFile`, `fs.writeFile`, `stream.pipeline`) | `Bun.file(p).text()/.json()/.bytes()/.stream()`, `Bun.write(path, data \| await fetch(url))` | `/docs/runtime/file-io` |
 | tar archives (`tar`, `archiver`) | `Bun.Archive` | `/docs/runtime/archive` |
