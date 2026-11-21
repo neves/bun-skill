@@ -19,7 +19,7 @@ claude mcp add --transport http bun https://bun.com/docs/mcp
 A cada release do Bun (https://bun.com/blog):
 
 1. Leia as release notes (`https://bun.com/blog/bun-v<versão>`).
-2. Se surgiu API nativa que substitui algo do Node ou um pacote npm, adicione uma linha na tabela de `skills/bun/SKILL.md`.
+2. Se surgiu API nativa que substitui algo do Node ou um pacote npm, adicione uma linha no mapa de `skills/bun/SKILL.md` e o snippet em `skills/bun/ref/<nome>.md`.
 3. Atualize o baseline na skill e aqui.
 
 ## Evals

@@ -1,95 +1,67 @@
 ---
 name: bun
-description: Bun-native replacements for Node APIs, npm packages and dev tools. Use for every coding task in a project that runs on Bun (bun.lock, bunfig.toml, @types/bun) — writing code or scripts, formatting, linting, type checking, testing, bundling, installing packages — and whenever Bun is named as the runtime.
+description: Bun-native replacements for Node APIs, npm packages and dev tools. Use for every coding task in a Bun project (bun.lock, bunfig.toml, @types/bun) — code, scripts, formatting, linting, type checking, tests, bundling, installs — and whenever Bun is the runtime.
 ---
 
 # Bun
 
-Bun ships a **Bun-native** API for most jobs a Node project solves with a built-in module or an npm package. Bun-native is the default choice: faster, fewer dependencies, and what Bun's docs recommend. Node APIs stay the choice only where Bun has no native equivalent (the table marks those).
+Bun-native is the default; a Node API stays only where the map says _keep_. Baseline **Bun 1.4.5**; the live docs win over this map.
 
-Baseline: Bun **1.4.5**. The table below is a cache of the live docs; the docs win when they disagree.
+1. Run `bun --version`. Above 1.4.5: read `/blog/bun-v<version>` for each newer release first.
+2. Map every `node:*` import, npm dependency and CLI tool in your change. Done when each is Bun-native or _keep_.
+3. Write each from its snippet, `ref/<snippet>.md` beside this file, already verified against the docs. A red `bun check` or run on a snippet's API, or a job not in the map: [ref/docs.md](ref/docs.md), and `search_bun` before adding a dependency the user did not name.
+4. Verify with `bun check`, `bun lint`, `bun fmt --check`, `bun test`. Confirm a command or flag with `bun <cmd> --help`; missing from the installed version → use the project's existing script.
 
-## Steps
+## API map
 
-1. **Confirm the runtime.** Bun project = `bun.lock`/`bun.lockb`, `bunfig.toml`, `@types/bun`, or scripts that call `bun`. Run `bun --version`; if it is above the baseline, read the release notes (`/blog/bun-v<version>`) for each version past 1.4.5 before writing code.
-2. **Map every Node API or package you are about to use** against the table. Done when each `node:*` import, npm dependency and CLI tool in your change is either Bun-native or marked _keep_ in the table.
-3. **Write it from the snippets.** [REFERENCE.md](REFERENCE.md) has a verified snippet for every row of the map; read the sections for the rows you use and write the code from them. Reach for [Docs lookup](#docs-lookup) only when `bun check` or a run goes red on a snippet's API, or the task needs an API no snippet shows.
-4. **Verify with Bun's own tools**: `bun check`, `bun lint`, `bun fmt --check`, `bun test`. Before relying on a command or flag, confirm it with `bun <command> --help`; a command missing from the installed version means fall back to the project's existing script.
-
-## Node → Bun-native map
-
-| Job | Bun-native | Doc path |
+| Replaces | Bun-native | Snippet |
 | --- | --- | --- |
-| Shell scripting (`child_process.exec`, `execa`, `zx`) | ``Bun.$`cmd` `` — escapes interpolations, cross-platform | `/docs/runtime/shell` |
-| Child processes (`spawn`, `fork`, IPC) | `Bun.spawn` / `Bun.spawnSync` | `/docs/runtime/child-process` |
-| Pseudo-terminal (`node-pty`) | `Bun.spawn(cmd, { terminal })` | `/docs/runtime/child-process` |
-| Read stdin, ask the user (`readline`, `get-stdin`, `process.stdin.on`, `prompts`) | `await Bun.stdin.text()`, `for await (const line of console)`, `prompt()` | `/docs/runtime/console` |
-| CLI args (`yargs`, `commander`, `minimist`, `meow`, hand-parsing `process.argv`) | `import { parseArgs } from "util"` over `Bun.argv.slice(2)` | `/docs/guides/process/argv` |
-| TCP sockets (`node:net`) | `Bun.listen` / `Bun.connect` | `/docs/runtime/networking/tcp` |
-| Read/write files, downloads (`fs.readFile`, `fs.writeFile`, `stream.pipeline`) | `Bun.file(p).text()/.json()/.bytes()/.stream()`, `Bun.write(path, data \| await fetch(url))` | `/docs/runtime/file-io` |
-| tar archives (`tar`, `archiver`) | `Bun.Archive` | `/docs/runtime/archive` |
-| Compression (`pako`, `node:zlib`) | `Bun.gzipSync` / `Bun.gunzipSync`, `Bun.zstdCompressSync`, `Bun.deflateSync`, `CompressionStream` (gzip, brotli, zstd) | `/docs/runtime/utils` |
-| Directories (`mkdir`, `readdir`, `rm`) | _keep_ `node:fs/promises` — Bun's docs recommend it | `/docs/runtime/file-io` |
-| Globbing (`glob`, `fast-glob`) | `new Bun.Glob(pattern).scan()` | `/docs/runtime/glob` |
-| SQLite (`better-sqlite3`, `sqlite3`) | `import { Database } from "bun:sqlite"` | `/docs/runtime/sqlite` |
-| Postgres / MySQL (`pg`, `postgres`, `mysql2`) | `import { sql, SQL } from "bun"` | `/docs/runtime/sql` |
-| Redis (`ioredis`, `redis`) | `import { redis, RedisClient } from "bun"` | `/docs/runtime/redis` |
-| S3 (`@aws-sdk/client-s3`) | `import { s3, S3Client } from "bun"` | `/docs/runtime/s3` |
-| HTTP server (`http.createServer`, `express`, `fastify`) | `Bun.serve({ routes: { "/todos": { GET, POST } }, fetch })` | `/docs/runtime/http/server`, `/docs/runtime/http/routing` |
-| Serve a static folder (`express.static`, `serve-static`, `sirv`, hand-rolled `Bun.file` handlers) | route `"/assets/*": { dir: "./public" }` — Content-Type, ETag, Range, index.html and path traversal handled | `/docs/runtime/http/routing` |
-| WebSockets (`ws`, `socket.io`) | `Bun.serve({ websocket })` | `/docs/runtime/http/websockets` |
-| Cookies (`cookie`, `cookie-parser`) | `req.cookies`, `Bun.CookieMap` | `/docs/runtime/http/cookies` |
-| CSRF tokens (`csurf`, `csrf-csrf`) | `Bun.CSRF.generate` / `.verify` | `/docs/runtime/csrf` |
-| URL matching (`path-to-regexp`) | `URLPattern` (standard) | MDN `URLPattern` |
-| HTTP client with its own TLS/proxy/pool (undici `Agent`, `https-proxy-agent`, `axios.create`) | `Bun.FetchSession`, `fetch(url, { proxy, tls })` | `/docs/runtime/networking/fetch` |
-| Password hashing (`bcrypt`, `argon2`) | `Bun.password.hash` / `.verify` | `/docs/runtime/hashing` |
-| Fast hashing (`xxhash`, `crypto.createHash`) | `Bun.hash`, `Bun.CryptoHasher` | `/docs/runtime/hashing` |
-| Env vars (`dotenv`, `dotenv-cli`, `env-cmd`) | `.env` loads automatically; `Bun.env`; `bun --env-file=.env.prod`, `--no-env-file` | `/docs/runtime/environment-variables` |
-| YAML / TOML / JSON5 / JSONC / JSONL (`js-yaml`, `jsonc-parser`, `strip-json-comments`, `ndjson`) | `Bun.YAML`, `Bun.TOML`, `Bun.JSON5`, `Bun.JSONC`, `Bun.JSONL`, or `import` the file | `/docs/runtime/yaml`, `/docs/runtime/toml`, `/docs/runtime/json5` |
-| Semver (`semver`) | `Bun.semver` | `/docs/runtime/semver` |
-| OS keychain (`keytar`) | `Bun.secrets` | `/docs/runtime/secrets` |
-| `__dirname`, `require.main === module` | `import.meta.dir`, `import.meta.main` | `/docs/runtime/module-resolution` |
-| Sleep, deep-equal, terminal text, ids (`escape-html`, `he`, `chalk` hex colors, `tinycolor2`, `strip-ansi`, `string-width`, `wrap-ansi`, `slice-ansi`, `cli-truncate`, `uuid`, `which`) | `Bun.sleep`, `Bun.deepEquals`, `Bun.escapeHTML`, `Bun.color`, `Bun.stripANSI`, `Bun.stringWidth`, `Bun.wrapAnsi`, `Bun.sliceAnsi`, `Bun.randomUUIDv7`, `Bun.which` | `/docs/runtime/utils` |
-| Dates and times (`moment`, `dayjs`, `date-fns`, `luxon`) | `Temporal` (standard, global) | MDN `Temporal` |
-| Cleanup (`try/finally` + `close()`) | `using` / `await using` (standard) — Bun.spawn, WebView, FetchSession, mock and spyOn dispose themselves | MDN `using` |
-| Cron jobs (`node-cron`, `cron`) | `Bun.cron(schedule, fn)` | `/docs/runtime/cron` |
-| Images (`sharp`, `jimp`) | `Bun.file(p).image()`, `Bun.Image` | `/docs/runtime/image` |
-| Browser automation, scraping (`puppeteer`, `playwright`) | `Bun.WebView` | `/docs/runtime/webview` |
-| Markdown → HTML (`marked`, `markdown-it`) | `Bun.markdown.html` | `/docs/runtime/markdown` |
-| XML (`fast-xml-parser`, `xml2js`) | `Bun.XML.parse` / `.stringify` | `/docs/runtime/xml` |
-| Run TS (`ts-node`, `tsx`, `nodemon`) | `bun file.ts`, `bun --watch`, `bun --hot` | `/docs/runtime` |
-| Run scripts together (`concurrently`, `npm-run-all`) | `bun run --parallel a b`, `--sequential`, `"build:*"`, `--filter` | `/docs/runtime` |
-| Profiling (`0x`, `clinic`) | `bun --cpu-prof-md`, `bun --heap-prof-md` (Markdown reports to read) | `/docs/project/benchmarking` |
-| Packages (`npm`, `npx`, `npm ci`, `npm view`, `npm version`, `npm publish`, `npm-check-updates`, `license-checker`) | `bun install`, `bun install --frozen-lockfile`, `bun add`, `bunx`, `bun info`, `bun pm version`, `bun publish`, `bun update -i`, `bun pm licenses`, `bun audit fix` |
-| Patch a dependency (`patch-package`) | `bun patch <pkg>`, edit, `bun patch --commit <pkg>` | `/docs/pm/cli/patch` |
-| New project (`npm create vite`, `create-react-app`, `npm init`) | `bun init`, `bun init --react` (`=tailwind`, `=shadcn`), `bun create <template>` | `/docs/runtime/templating/init` | `/docs/pm/cli/install` |
-| Tests (`jest`, `vitest`) | `bun test` + `import { test, expect, mock } from "bun:test"` | `/docs/test` |
-| Coverage, CI sharding, retries (`c8`, `nyc`, `jest --shard`, `jest --changedSince`) | `bun test --coverage`, `--shard=1/3`, `--changed`, `--parallel`, `--retry=2` | `/docs/test/code-coverage` |
-| Test mocks, fake timers (`jest.mock`, `sinon`, `vi.useFakeTimers`) | `mock`, `spyOn`, `mock.module`, `jest.useFakeTimers`, `setSystemTime` from `bun:test` | `/docs/test/mocks` |
-| Frontend dev server, full-stack app (`vite`, `webpack-dev-server`) | `bun ./index.html`, or `import page from "./index.html"` as a `Bun.serve` route | `/docs/bundler/fullstack` |
-| Bundling (`esbuild`, `webpack`, `tsup`) | `bun build` / `Bun.build` | `/docs/bundler` |
-| Bundle analysis (`webpack-bundle-analyzer`, `source-map-explorer`) | `bun build --metafile-md=meta.md` (Markdown report to read) | `/docs/bundler` |
-| Transpile TS/JSX in code (`@babel/core`, `typescript.transpileModule`, `esbuild.transform`) | `new Bun.Transpiler({ loader: "tsx" }).transformSync(code)` | `/docs/runtime/transpiler` |
-| Single-file executable (`pkg`, `nexe`) | `bun build --compile` | `/docs/compiler/executables` |
-| Formatting (`prettier`) | `bun fmt` | `/docs/format` |
-| Linting (`eslint`, `oxlint`) | `bun lint` | `/docs/lint` |
-| Type checking (`tsc --noEmit`) | `bun check` | `/docs/runtime/check` |
+| `child_process.exec`, `execa`, `zx` | ``Bun.$`cmd` `` (escapes interpolations) | shell |
+| `spawn`, `fork`, IPC, `node-pty` | `Bun.spawn` (`terminal` for a pty), `Bun.spawnSync` | spawn |
+| `readline`, `process.stdin`, `get-stdin`, `prompts` | `Bun.stdin.text()`, `for await (const line of console)`, `prompt()` | stdin |
+| `yargs`, `commander`, `minimist`, `meow`, `process.argv` parsing | `parseArgs` from `"util"` over `Bun.argv.slice(2)` | argv |
+| `node:net` | `Bun.listen`, `Bun.connect` | tcp |
+| `fs.readFile`, `fs.writeFile`, `stream.pipeline` downloads | `Bun.file(p).text()/.json()/.stream()`, `Bun.write(p, data \| await fetch(url))` | files |
+| `mkdir`, `readdir`, `rm` | _keep_ `node:fs/promises` | files |
+| `tar`, `archiver` | `Bun.Archive` | archive |
+| `pako`, `node:zlib` | `Bun.gzipSync`, `Bun.zstdCompressSync`, `CompressionStream` | compression |
+| `glob`, `fast-glob` | `Bun.Glob` | glob |
+| `better-sqlite3`, `sqlite3` | `Database` from `"bun:sqlite"` | sqlite |
+| `pg`, `postgres`, `mysql2` | `sql`, `SQL` from `"bun"` | sql |
+| `ioredis`, `redis` | `redis`, `RedisClient` from `"bun"` | redis |
+| `@aws-sdk/client-s3` | `s3`, `S3Client` from `"bun"` | s3 |
+| `http.createServer`, `express`, `fastify`, `express.static`, `serve-static`, `sirv` | `Bun.serve({ routes, fetch })`; static folder: route `"/x/*": { dir }` | serve |
+| `ws`, `socket.io` | `Bun.serve({ websocket })` | websocket |
+| `cookie`, `cookie-parser` | `req.cookies`, `Bun.CookieMap` | cookies |
+| `csurf`, `csrf-csrf` | `Bun.CSRF.generate` / `.verify` | csrf |
+| `path-to-regexp` | `URLPattern` | urlpattern |
+| undici `Agent`, `https-proxy-agent`, `axios.create` | `fetch(url, { proxy, tls })`, `Bun.FetchSession` | fetch |
+| `bcrypt`, `argon2`, `xxhash`, `crypto.createHash` | `Bun.password`, `Bun.hash`, `Bun.CryptoHasher` | hashing |
+| `dotenv`, `dotenv-cli`, `env-cmd` | `.env` auto-loads, `Bun.env`, `bun --env-file` | env |
+| `js-yaml`, `jsonc-parser`, `strip-json-comments`, `ndjson` | `Bun.YAML`/`TOML`/`JSON5`/`JSONC`/`JSONL`, or `import` the file | formats |
+| `semver` | `Bun.semver` | semver |
+| `keytar` | `secrets` from `"bun"` | secrets |
+| `__dirname`, `__filename`, `require.main === module` | `import.meta.dir` / `.path` / `.main` | paths |
+| `escape-html`, `he`, `chalk` hex colors, `tinycolor2`, `strip-ansi`, `string-width`, `wrap-ansi`, `slice-ansi`, `cli-truncate`, `uuid`, `which`, sleep, deep-equal | `Bun.escapeHTML`, `Bun.color`, `Bun.stripANSI`, `Bun.stringWidth`, `Bun.wrapAnsi`, `Bun.sliceAnsi`, `Bun.randomUUIDv7`, `Bun.which`, `Bun.sleep`, `Bun.deepEquals` | utils |
+| `moment`, `dayjs`, `date-fns`, `luxon` | `Temporal` | temporal |
+| `try/finally` + `close()` | `using` / `await using` | using |
+| `node-cron`, `cron` | `Bun.cron` | cron |
+| `sharp`, `jimp` | `Bun.file(p).image()`, `Bun.Image` | image |
+| `puppeteer`, `playwright` | `Bun.WebView` | webview |
+| `marked`, `markdown-it` | `Bun.markdown.html` | markdown |
+| `fast-xml-parser`, `xml2js` | `XML` from `"bun"` | xml |
+| `jest`, `vitest`, `sinon`, `c8`, `nyc`, `jest --shard` | `bun test` + `bun:test` (`mock`, `spyOn`, `mock.module`, fake timers), `--coverage`, `--shard`, `--changed`, `--retry` | test |
+| `vite`, `webpack-dev-server` | `bun ./index.html`; `import page from "./index.html"` as a `Bun.serve` route | fullstack |
+| `esbuild`, `webpack`, `tsup`, `@babel/core`, `pkg`, `nexe`, `webpack-bundle-analyzer` | `bun build` / `Bun.build`, `Bun.Transpiler`, `--compile`, `--metafile-md` | build |
 
-Any job absent from this table: `search_bun` for a Bun-native option before adding a dependency the user did not name.
+## Command map
 
-## Docs lookup
-
-The source of truth is the **Bun docs MCP server** at `https://bun.com/docs/mcp`: it indexes every docs page, guide and release note, including features newer than this skill.
-
-- `search_bun` — ranked search; start here (`"bun lint"`, `"Bun.serve websocket"`).
-- `read_bun_page` — full markdown of a path from the table (`/docs/runtime/shell`).
-- `grep_bun` — exact identifiers, flags, error messages.
-
-When those tools are not connected, call the same server over HTTP (stateless JSON-RPC):
-
-```sh
-curl -s https://bun.com/docs/mcp -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' \
-  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"search_bun","arguments":{"query":"bun lint","limit":5}}}'
-```
-
-Any doc path also reads as raw markdown at `https://bun.com<path>.md`.
+| Replaces | Bun |
+| --- | --- |
+| `ts-node`, `tsx`, `nodemon` | `bun file.ts`, `bun --watch`, `bun --hot` |
+| `concurrently`, `npm-run-all` | `bun run --parallel a b`, `"build:*"`, `--sequential`, `--filter` |
+| `0x`, `clinic` | `bun --cpu-prof-md`, `bun --heap-prof-md` (Markdown reports to read) |
+| `npm install`/`ci`/`view`/`version`/`publish`, `npx`, `npm-check-updates`, `license-checker` | `bun install` (`--frozen-lockfile`), `bun add`, `bun info`, `bun pm version`, `bun publish`, `bunx`, `bun update -i`, `bun pm licenses`, `bun audit fix` |
+| `patch-package` | `bun patch <pkg>`, edit `node_modules/<pkg>`, `bun patch --commit <pkg>` |
+| `npm init`, `npm create vite`, `create-react-app` | `bun init`, `bun init --react` (`=tailwind`, `=shadcn`), `bun create <template>` |
+| `prettier`, `eslint`, `oxlint`, `tsc --noEmit` | `bun fmt`, `bun lint`, `bun check` |
